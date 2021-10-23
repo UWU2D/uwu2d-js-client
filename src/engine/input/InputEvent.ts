@@ -1,5 +1,3 @@
-import { keyCode } from './KeyCode';
-
 type KeyPressEvent = {
     type: 'keyPress',
     key: string,
@@ -21,19 +19,19 @@ type MouseClickEvent = {
 
 type EventUnion = KeyPressEvent | MouseMoveEvent | MouseClickEvent;
 
-const keyDownEvent = (event: KeyboardEvent): KeyPressEvent => ({
-        type: 'keyPress', key: keyCode(event.keyCode), pressed: true
+const keyDownEvent = (key: string): KeyPressEvent => ({
+        type: 'keyPress', key, pressed: true
 });
 
-const keyUpEvent = (event: KeyboardEvent): KeyPressEvent => ({
-    type: 'keyPress', key: keyCode(event.keyCode), pressed: false
+const keyUpEvent = (key: string): KeyPressEvent => ({
+    type: 'keyPress', key, pressed: false
 });
 
-const mouseMoveEvent = (event: MouseEvent, canvasPos: any): MouseMoveEvent => ({ 
+const mouseMoveEvent = (canvasPos: any): MouseMoveEvent => ({ 
     type: 'mouse', x: canvasPos.x, y: canvasPos.y
 });
 
-const mouseClickEvent = (event: MouseEvent, canvasPos: any): MouseClickEvent => ({ 
+const mouseClickEvent = (canvasPos: any): MouseClickEvent => ({ 
     type: 'click', x: canvasPos.x, y: canvasPos.y, pressed: true
 });
 

@@ -1,11 +1,10 @@
 import Canvas from "../engine/canvas/Canvas";
 import InputService from "../engine/input/InputService";
-import { keyDownEvent, keyUpEvent, mouseMoveEvent, mouseClickEvent } from "../engine/input/InputEvent";
 import { CircleSprite, PolygonSprite } from "../engine/sprite";
 import SelfAdjustingTimer from '../engine/tick/SelfAdjustingTimer';
 import GameClient from "./GameClient";
 import WSClient from "./WSClient";
-import { keys } from "../engine/input/KeyCode";
+import ClientConfig from './ClientConfig';
 
 export default class NetworkGameClient extends GameClient {
     public wsClient: WSClient;
@@ -13,6 +12,7 @@ export default class NetworkGameClient extends GameClient {
     public clientId: string = '';
     public inputService: InputService;
     public timer: SelfAdjustingTimer;
+    public config: ClientConfig;
 
     constructor(host: string, canvas: Canvas, ssl: boolean = false, port?: number) {
         super(canvas);
@@ -23,14 +23,6 @@ export default class NetworkGameClient extends GameClient {
         this.wsClient.connect();
 
         this.inputService = new InputService(this, canvas);
-        this.inputService.registeredKeys = keys;
-        this.inputService.registerEvent('keydown', (event: KeyboardEvent) => this.sendGameMessage(keyDownEvent(event)));
-        this.inputService.registerEvent('keyup', (event: KeyboardEvent) => this.sendGameMessage(keyUpEvent(event)));
-        this.inputService.registerEvent('mousemove', (event: MouseEvent) =>
-            this.sendGameMessage(mouseMoveEvent(event, this.inputService.getCanvasMousePos(event))), true);
-        this.inputService.registerEvent('mousedown', (event: MouseEvent) =>
-            this.sendGameMessage(mouseClickEvent(event, this.inputService.getCanvasMousePos(event))));
-
         this.timer = new SelfAdjustingTimer((delta: number) => {
             this.inputService.tick(delta);
         }, this.tickRate);
@@ -50,6 +42,7 @@ export default class NetworkGameClient extends GameClient {
         this.destroyAll();
         this.clientId = '';
         this.timer.stop();
+        this.inputService.reset();
     }
 
     public onHandshake(data: any) {
@@ -57,8 +50,13 @@ export default class NetworkGameClient extends GameClient {
             console.log('got second client id');
             return;
         }
+        
+        this.config = data['data']['config'];
         this.clientId = data['data']['id'];
         this.shouldHandshake = false;
+        this.canvas.height = this.config.area.y;
+        this.canvas.width = this.config.area.x;
+        this.inputService.configure(this.config, (data: any) => this.sendGameMessage(data));
     }
 
     public onState(data: any) {}
@@ -97,15 +95,6 @@ export default class NetworkGameClient extends GameClient {
 
     public process(dt: number) {
         if (this.shouldHandshake) this.sendHandshake();
-        this.processNetwork();
-    }
-
-    public processNetwork() {
-        // this.wsClient.proccess();
-    }
-
-    public connectionSevered() {
-        // this.heartbeatTimer.isElapsed();
     }
 
     public sendHeartbeat() { this.sendMessage('heartbeat', {}); }
@@ -124,9 +113,7 @@ export default class NetworkGameClient extends GameClient {
         });
     }
 
-    public sendGameMessage(data: any) {
-        this.sendMessage('game', data);
-    }
+    public sendGameMessage(data: any) { this.sendMessage('game', data); }
 
     // TODO - game objects type
     public syncEntities(gameObjects: any[]) { gameObjects.map(obj => this.syncEntity(obj)); }
